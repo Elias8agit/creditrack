@@ -1,0 +1,34 @@
+// Módulo crítico: máquina de estados de la solicitud de crédito
+
+const ESTADOS = {
+  BORRADOR: 'BORRADOR',
+  ENVIADA: 'ENVIADA',
+  EN_REVISION: 'EN_REVISION',
+  DEVUELTA: 'DEVUELTA',
+  APROBADA: 'APROBADA',
+  RECHAZADA: 'RECHAZADA',
+  CANCELADA: 'CANCELADA',
+  DESEMBOLSADA: 'DESEMBOLSADA',
+  FINALIZADA: 'FINALIZADA',
+};
+
+const TRANSICIONES = {
+  BORRADOR: ['ENVIADA', 'CANCELADA'],
+  ENVIADA: ['EN_REVISION', 'RECHAZADA'],
+  EN_REVISION: ['APROBADA', 'RECHAZADA', 'DEVUELTA'],
+  DEVUELTA: ['ENVIADA', 'CANCELADA'],
+  APROBADA: ['DESEMBOLSADA'],
+  DESEMBOLSADA: ['FINALIZADA'],
+  RECHAZADA: [],
+  CANCELADA: [],
+  FINALIZADA: [],
+};
+
+const ACTIVOS = ['BORRADOR', 'ENVIADA', 'EN_REVISION', 'DEVUELTA', 'APROBADA'];
+const EDITABLES = ['BORRADOR', 'DEVUELTA'];
+
+function canTransition(from, to) {
+  return (TRANSICIONES[from] || []).includes(to);
+}
+
+module.exports = { ESTADOS, TRANSICIONES, ACTIVOS, EDITABLES, canTransition };

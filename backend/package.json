@@ -1,0 +1,26 @@
+{
+  "name": "creditrack-backend",
+  "version": "1.0.0",
+  "description": "API REST de CrediTrack: gestión de solicitudes de crédito",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:reset": "node src/db/reset.js",
+    "test": "echo \"Sin pruebas automatizadas (línea base = 0)\" && exit 0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.3",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
+  }
+}
