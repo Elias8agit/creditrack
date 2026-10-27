@@ -182,8 +182,8 @@ export default function ApplicationDetail() {
       <table className="table" data-testid="historial">
         <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Usuario</th><th>Comentario</th></tr></thead>
         <tbody>
-          {app.historial.map((h, i) => (
-            <tr key={i}>
+          {app.historial.map((h) => (
+            <tr key={h.id}>
               <td>{new Date(h.fecha).toLocaleString('es-GT')}</td><td>{h.estadoAnterior || '-'}</td><td>{h.estadoNuevo}</td>
               <td>{h.usuario || 'Sistema'}</td><td>{h.comentario}</td>
             </tr>

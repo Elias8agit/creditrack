@@ -2,7 +2,7 @@ const { Pool, types } = require('pg');
 const config = require('../config');
 
 // NUMERIC -> number (los montos se manejan con 2 decimales)
-types.setTypeParser(1700, (v) => (v === null ? null : parseFloat(v)));
+types.setTypeParser(1700, (v) => (v === null ? null : Number.parseFloat(v)));
 // DATE -> string 'YYYY-MM-DD' para evitar corrimientos de zona horaria
 types.setTypeParser(1082, (v) => v);
 

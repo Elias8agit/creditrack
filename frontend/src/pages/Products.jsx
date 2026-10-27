@@ -45,7 +45,8 @@ export default function Products() {
   const [ok, setOk] = useState(null);
 
   const load = () => api('/products/admin/all').then(setItems).catch(setError);
-  useEffect(() => { load(); }, []);
+  // load() maneja sus propios errores (catch → setError); void indica que la promesa se ignora a propósito
+  useEffect(() => { void load(); }, []);
 
   return (
     <section className="card">
@@ -56,7 +57,7 @@ export default function Products() {
         <thead><tr><th>Código</th><th>Nombre</th><th>Monto mín.</th><th>Monto máx.</th><th>Plazo mín.</th><th>Plazo máx.</th><th>Tasa (%)</th><th>Activo</th><th></th></tr></thead>
         <tbody>
           {items.map((p) => (
-            <ProductRow key={p.id} product={p} onSaved={(m) => { setOk(m); setError(null); load(); }} onError={(e) => { setError(e); setOk(null); }} />
+            <ProductRow key={p.id} product={p} onSaved={(m) => { setOk(m); setError(null); void load(); }} onError={(e) => { setError(e); setOk(null); }} />
           ))}
         </tbody>
       </table>

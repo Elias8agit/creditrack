@@ -9,16 +9,17 @@ export default function Users() {
   const [ok, setOk] = useState(null);
 
   const load = () => api('/users').then(setUsers).catch(setError);
-  useEffect(() => { load(); }, []);
+  // load() maneja sus propios errores (catch → setError); void indica que la promesa se ignora a propósito
+  useEffect(() => { void load(); }, []);
 
   const run = async (fn, msg) => {
     setError(null); setOk(null);
-    try { await fn(); setOk(msg); load(); } catch (err) { setError(err); }
+    try { await fn(); setOk(msg); await load(); } catch (err) { setError(err); }
   };
 
   const create = (e) => {
     e.preventDefault();
-    run(async () => {
+    void run(async () => {
       await api('/users', { method: 'POST', body: form });
       setForm({ nombre: '', email: '', password: '', rol: 'ANALISTA' });
     }, 'Usuario creado');
