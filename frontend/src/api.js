@@ -8,14 +8,40 @@ export class ApiError extends Error {
   }
 }
 
+const SESSION_KEY = 'creditrack.session';
+const ROLES = new Set(['ADMIN', 'ANALISTA', 'CLIENTE']);
+// JWT: hasta 3 segmentos base64url separados por punto, sin otros caracteres
+const TOKEN_RE = /^[\w-]{1,1024}(?:\.[\w-]{1,1024}){0,2}$/;
+const texto = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+
+// La respuesta del servidor no se guarda tal cual en localStorage (riesgo de "storage poisoning"):
+// se reconstruye un objeto nuevo solo con los campos esperados, validados por tipo, formato y lista blanca.
+export function sanitizeSession(session) {
+  if (!session || typeof session.token !== 'string' || !TOKEN_RE.test(session.token)) return null;
+  const u = session.usuario;
+  const usuario = u && typeof u === 'object'
+    ? {
+        id: Number.isSafeInteger(u.id) ? u.id : undefined,
+        nombre: texto(u.nombre, 100),
+        email: texto(u.email, 150),
+        rol: ROLES.has(u.rol) ? u.rol : undefined,
+      }
+    : undefined;
+  return { token: session.token, usuario };
+}
+
 export function getSession() {
-  const raw = localStorage.getItem('creditrack.session');
-  return raw ? JSON.parse(raw) : null;
+  try {
+    return sanitizeSession(JSON.parse(localStorage.getItem(SESSION_KEY)));
+  } catch {
+    return null; // contenido corrupto o manipulado: se trata como sesión inexistente
+  }
 }
 
 export function setSession(session) {
-  if (session) localStorage.setItem('creditrack.session', JSON.stringify(session));
-  else localStorage.removeItem('creditrack.session');
+  const segura = sanitizeSession(session);
+  if (segura) localStorage.setItem(SESSION_KEY, JSON.stringify(segura));
+  else localStorage.removeItem(SESSION_KEY);
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
