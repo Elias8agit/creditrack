@@ -1,7 +1,7 @@
 require('dotenv').config({ quiet: true });
 
 const config = {
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: Number.parseInt(process.env.PORT || '3000', 10),
   databaseUrl: process.env.DATABASE_URL || 'postgres://postgres@localhost:5432/creditrack',
   databaseSsl: process.env.DATABASE_SSL === 'true',
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-cambiar-en-produccion',

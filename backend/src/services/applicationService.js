@@ -17,7 +17,9 @@ const SELECT = `SELECT a.id, a.client_id AS "clientId", u.nombre AS "cliente", a
   a.creado_en AS "creadoEn", a.actualizado_en AS "actualizadoEn"
   FROM applications a JOIN users u ON u.id = a.client_id JOIN products p ON p.id = a.product_id`;
 
-async function findById(id, db = { query }) {
+const defaultDb = { query };
+
+async function findById(id, db = defaultDb) {
   const { rows } = await db.query(`${SELECT} WHERE a.id = $1`, [id]);
   if (!rows[0]) throw notFound('Solicitud no encontrada');
   return rows[0];
@@ -65,10 +67,8 @@ async function list(user, { estado } = {}) {
     params.push(estado);
     where.push(`a.estado = $${params.length}`);
   }
-  const { rows } = await query(
-    `${SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY a.creado_en DESC`,
-    params,
-  );
+  const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const { rows } = await query(`${SELECT} ${whereClause} ORDER BY a.creado_en DESC`, params);
   return rows;
 }
 
@@ -76,7 +76,7 @@ async function getDetail(user, id) {
   const app = await findById(id);
   assertAccess(user, app);
   const hist = await query(
-    `SELECT h.estado_anterior AS "estadoAnterior", h.estado_nuevo AS "estadoNuevo", h.comentario,
+    `SELECT h.id, h.estado_anterior AS "estadoAnterior", h.estado_nuevo AS "estadoNuevo", h.comentario,
             h.creado_en AS "fecha", u.nombre AS "usuario"
      FROM application_history h LEFT JOIN users u ON u.id = h.usuario_id
      WHERE h.application_id = $1 ORDER BY h.id`,
@@ -215,7 +215,7 @@ async function evaluate(user, id, body) {
 }
 
 async function disburse(user, id, body) {
-  const fecha = (body && body.fechaDesembolso) || today();
+  const fecha = body?.fechaDesembolso || today();
   if (!parseDate(fecha)) throw badRequest('La fecha de desembolso no es válida (YYYY-MM-DD)');
   if (fecha > today()) throw badRequest('La fecha de desembolso no puede ser futura');
 
