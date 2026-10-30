@@ -152,7 +152,7 @@ jobs:
           retention-days: 7
 
   deploy:
-    name: 5. Despliegue (${{ github.ref_name == 'main' && 'PROD' || 'QA' }})
+    name: 5. Despliegue
     needs: api-tests
     # Solo se despliega al integrar en qa o main (nunca desde un Pull Request ni desde dev)
     if: github.event_name == 'push' && (github.ref_name == 'qa' || github.ref_name == 'main')
