@@ -32,7 +32,7 @@ async function quote(user, applicationId, fechaPago = today()) {
 }
 
 async function pay(user, applicationId, body) {
-  const fechaPago = (body && body.fechaPago) || today();
+  const fechaPago = body?.fechaPago || today();
   const { monto } = body || {};
   if (!parseDate(fechaPago)) throw badRequest('La fecha de pago no es válida (YYYY-MM-DD)');
   if (fechaPago > today()) throw badRequest('La fecha de pago no puede ser futura');

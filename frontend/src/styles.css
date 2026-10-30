@@ -43,7 +43,7 @@ input, select, textarea { padding: 8px 10px; border: 1px solid var(--border); bo
 .table th, .table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
 .table th { background: #f7f9fb; }
 .table.compact input { width: 100%; min-width: 70px; }
-.alert { padding: 12px 14px; border-radius: 6px; margin-bottom: 14px; }
+.alert { display: block; padding: 12px 14px; border-radius: 6px; margin-bottom: 14px; }
 .alert ul { margin: 6px 0 0; padding-left: 18px; }
 .alert-error { background: #fdecea; color: var(--danger); }
 .alert-success { background: #e8f5ec; color: var(--ok); }

@@ -1,4 +1,5 @@
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Segmentos sin punto ni @: evita el retroceso exponencial (backtracking) de la versión anterior
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 const DPI_RE = /^\d{13}$/;
 

@@ -22,7 +22,7 @@ export function ErrorBox({ error }) {
 
 export function SuccessBox({ message }) {
   if (!message) return null;
-  return <div className="alert alert-success" role="status" data-testid="success">{message}</div>;
+  return <output className="alert alert-success" data-testid="success">{message}</output>;
 }
 
 export function Field({ label, children, hint }) {

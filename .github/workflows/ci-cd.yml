@@ -1,0 +1,186 @@
+# Pipeline de integración y despliegue continuo de CrediTrack (Fase 2, E13)
+# Orden: 1) compilación  2) pruebas unitarias  3) SonarCloud + quality gate  4) pruebas de API  5) despliegue
+name: CI/CD CrediTrack
+
+on:
+  push:
+    branches: [dev, qa, main]
+  pull_request:
+    branches: [dev, qa, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: 1. Compilación
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Backend - instalar dependencias
+        working-directory: backend
+        run: npm ci
+      - name: Backend - verificar sintaxis de todos los módulos
+        working-directory: backend
+        run: find src -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Frontend - instalar dependencias
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend - compilar (Vite)
+        working-directory: frontend
+        run: npm run build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  unit-tests:
+    name: 2. Pruebas unitarias
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Backend - Jest con cobertura
+        working-directory: backend
+        run: npm ci && npm test
+      - name: Frontend - Vitest con cobertura
+        working-directory: frontend
+        run: npm ci && npm test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cobertura
+          path: |
+            backend/coverage/lcov.info
+            frontend/coverage/lcov.info
+          retention-days: 7
+
+  sonar:
+    name: 3. Análisis estático (SonarCloud)
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # historial completo para detectar código nuevo
+      - uses: actions/download-artifact@v8
+        with:
+          name: cobertura
+      - name: Análisis SonarCloud con verificación de quality gate
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+
+  api-tests:
+    name: 4. Pruebas de API (Newman)
+    needs: sonar
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: creditrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/creditrack
+      JWT_SECRET: secreto-solo-para-ci
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Levantar la API con una base de datos temporal
+        working-directory: backend
+        run: |
+          npm ci
+          nohup node src/server.js > ../api.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/health && exit 0
+            sleep 2
+          done
+          cat ../api.log
+          exit 1
+      - name: Instalar Newman
+        run: npm install -g newman newman-reporter-htmlextra
+      - name: Ejecutar la colección de Postman
+        run: >
+          newman run qa/postman/CrediTrack.postman_collection.json
+          -e qa/postman/local.postman_environment.json
+          --reporters cli,junit,htmlextra
+          --reporter-junit-export reportes/newman-junit.xml
+          --reporter-htmlextra-export reportes/newman-reporte.html
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: reporte-pruebas-api
+          path: reportes/
+          retention-days: 7
+
+  deploy:
+    name: 5. Despliegue
+    needs: api-tests
+    # Solo se despliega al integrar en qa o main (nunca desde un Pull Request ni desde dev)
+    if: github.event_name == 'push' && (github.ref_name == 'qa' || github.ref_name == 'main')
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'produccion' || 'qa' }}
+      url: ${{ vars.APP_URL }}
+    steps:
+      - name: Disparar el despliegue en Render (API y frontend)
+        env:
+          HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: |
+          if [ -z "$HOOK_API" ] || [ -z "$HOOK_WEB" ]; then
+            echo "::error::Faltan los secretos RENDER_DEPLOY_HOOK_API / RENDER_DEPLOY_HOOK_WEB del ambiente ${{ github.ref_name }}"
+            exit 1
+          fi
+          curl -fsS -X POST "$HOOK_API" > /dev/null
+          curl -fsS -X POST "$HOOK_WEB" > /dev/null
+          echo "Despliegue solicitado para el commit ${GITHUB_SHA::7}"
+      - name: Verificar que la API desplegada responde
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          sleep 60
+          for i in $(seq 1 30); do
+            if curl -sf "$API_URL/health"; then echo; echo "API en línea"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::La API no respondió después del despliegue"
+          exit 1
