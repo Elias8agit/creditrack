@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { api, ApiError, money, pct, getSession, setSession, ESTADO_LABEL } from '../src/api';
+import { api, ApiError, money, pct, getSession, setSession, sanitizeSession, ESTADO_LABEL } from '../src/api';
 
 describe('api.js: utilidades de formato', () => {
   test('money formatea quetzales con separador de miles y 2 decimales', () => {
@@ -29,6 +29,20 @@ describe('api.js: sesión y llamadas HTTP (fetch simulado)', () => {
     setSession({ token: 't1', usuario: { rol: 'ADMIN' } });
     expect(getSession().usuario.rol).toBe('ADMIN');
     setSession(null);
+    expect(getSession()).toBeNull();
+  });
+
+  test('sanitizeSession solo conserva campos esperados y descarta valores fuera de la lista blanca', () => {
+    const s = sanitizeSession({ token: 'a.b.c', usuario: { id: 7, nombre: 'Ana', rol: 'SUPERADMIN', extra: '<script>' }, otro: 1 });
+    expect(s).toEqual({ token: 'a.b.c', usuario: { id: 7, nombre: 'Ana', email: undefined, rol: undefined } });
+    expect(sanitizeSession({ token: 'abc<script>' })).toBeNull();
+    expect(sanitizeSession({ usuario: { rol: 'ADMIN' } })).toBeNull();
+  });
+
+  test('getSession ignora contenido manipulado o corrupto en localStorage', () => {
+    localStorage.setItem('creditrack.session', '{no es json');
+    expect(getSession()).toBeNull();
+    localStorage.setItem('creditrack.session', JSON.stringify({ token: 'x y', usuario: { rol: 'ADMIN' } }));
     expect(getSession()).toBeNull();
   });
 
