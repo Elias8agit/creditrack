@@ -8,6 +8,7 @@ services:
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /api/health
+    autoDeploy: false # el despliegue lo dispara el pipeline cuando todas las etapas pasan
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -27,6 +28,7 @@ services:
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
+    autoDeploy: false
     envVars:
       - key: VITE_API_URL
         sync: false
